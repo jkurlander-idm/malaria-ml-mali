@@ -12,14 +12,14 @@ from calibtool.study_sites.site_setup_functions import *
 logger = logging.getLogger(__name__)
 
 
-class MagudeMultiYearEntoCalibSite(EntomologyCalibSite):
+class MultiYearEntoCalibSite(EntomologyCalibSite):
 
     homedir = 'C:\\Users\\jkurlander\\Dropbox (IDM)'
 
     def __init__(self, spec, reference_fname,
                  itn_fname='', irs_fname='', hfca=None, **kwargs):
         self.metadata = {
-        'village': 'Magude',
+        'village': 'Kangaba',
         'months': [calendar.month_abbr[i] for i in range(1, 13)],
         'species': [spec],
         'HFCA': hfca,
@@ -30,10 +30,10 @@ class MagudeMultiYearEntoCalibSite(EntomologyCalibSite):
         self.duration = int(max(self.get_reference_data('entomology_by_season').reset_index()['Month']) / 12) + 1
         self.irs_fname = irs_fname
         self.itn_fname = itn_fname
-        super(MagudeMultiYearEntoCalibSite, self).__init__(hfca)
+        super(MultiYearEntoCalibSite, self).__init__(hfca)
 
     def get_reference_data(self, reference_type):
-        super(MagudeMultiYearEntoCalibSite, self).get_reference_data(reference_type)
+        super(MultiYearEntoCalibSite, self).get_reference_data(reference_type)
 
         # Load the Parasitology CSV
         reference_data = multi_year_ento_data_clustered(self.metadata)

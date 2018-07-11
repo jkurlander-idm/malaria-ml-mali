@@ -47,7 +47,7 @@ class ChannelByMultiYearSeasonCohortInsetAnalyzer(BaseCalibrationAnalyzer):
         cfg = parser.raw_data[self.filenames[1]]['parameters']
         species = cfg['Vector_Species_Names'][0]
         hfca = self.site_name
-        multiplier = cfg['%s.Multiplier' % hfca]
+        multiplier = 1
 
         # Load data from simulation
         data = { x : parser.raw_data[self.filenames[0]]['Channels'][x]['Data'] for x in [self.population_channel, self.vector_channel]}

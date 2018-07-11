@@ -206,9 +206,6 @@ def multi_year_ento_data(csvfilename, metadata):
 def multi_year_ento_data_clustered(metadata):
 
     df = pd.read_csv(metadata['csvfilename'])
-    if metadata['HFCA']:
-        cname = metadata['HFCA'].replace('-', ' ')
-        df = df[df['cluster_name']==cname]
 
     df = df[['month', 'gambiae', 'funestus']]
 

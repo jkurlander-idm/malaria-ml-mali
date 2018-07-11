@@ -28,7 +28,7 @@ from spline_functions import *
 # from .spline_functions import get_spline_values_for_all_params, get_annual_representative_spline, \
 #     get_representative_spline_multipliers
 
-from MagudeMultiYearEntoCalibSite import MagudeMultiYearEntoCalibSite
+from MultiYearEntoCalibSite import MultiYearEntoCalibSite
 
 # Which simtools.ini block to use for this calibration
 SetupParser.default_block = 'HPC'
@@ -43,7 +43,7 @@ datadir = 'C:\\Users\\jkurlander\\Dropbox (IDM)'
 
 # List of sites we want to calibrate on
 throwaway = 1
-species  = 'gambiae'
+species  = 'funestus'
 # reference_fname = 'combined_funestus_count.csv'
 reference_fname = 'cluster_mosquito_counts_per_house_by_month.csv'
 reference_spline = 'Multi_year_calibration_by_HFCA_180404/best_180409/Panjane_funestus.csv'
@@ -53,14 +53,17 @@ itn_fn = os.path.join(datadir,
                       'Malaria Team Folder/projects/Mozambique/entomology_calibration/cluster_all_itn_events.csv')
 
 
-hfca = 'Mali'
-sites = [MagudeMultiYearEntoCalibSite(species, hfca=hfca, throwaway=throwaway,
-                                      reference_fname = os.path.join(datadir, 'Malaria Team Folder/projects/Mozambique/entomology_calibration/', reference_fname),
-                                      )
-         ]
+hfca = 'Kangaba'
+sites = [MultiYearEntoCalibSite(species, hfca=hfca, throwaway=throwaway,
+                                      reference_fname = 'C:/Users/jkurlander/Dropbox (IDM)/Malaria Team Folder/projects/atsb/Reference_data/dataTest.csv'#os.path.join(datadir, 'Malaria Team Folder/projects/Mozambique/entomology_calibration/', reference_fname),
+                               )
+        ]
+
 
 expname = '%sEntoCalib%s_TEST' %(hfca, species)
 max_iterations = 2
+max_diff = 0.5
+max_frac_diff = 0.05
 
 # The default plotters used in an Optimization with OptimTool
 # plotters = [LikelihoodPlotter(combine_sites=True),
@@ -71,7 +74,7 @@ plotters = [SiteDataPlotter(num_to_plot=20, combine_sites=True),
 
 #############################################################################################################
 ref = sites[0].analyzers[0].reference.copy()
-duration = int(max(ref.reset_index()['Month'])/12) + 1
+duration = 1#int(max(ref.reset_index()['Month'])/12) + 1
 
 params = [
     {
@@ -83,11 +86,11 @@ params = [
     }
 ]
 spline = get_spline_values(ref, species)
-fname = os.path.join(datadir, 'Malaria Team Folder/projects/Mozambique/entomology_calibration/', reference_spline)
 for i, row in spline.iterrows() :
     d = row.to_dict()
     d['Name'] = '%s_%i' % (species, row['Month'])
     params.append(d)
+
 
 ls_hab_ref = { 'Capacity_Distribution_Number_Of_Years' : throwaway + duration,
                'Capacity_Distribution_Over_Time' : {
@@ -120,11 +123,10 @@ def map_sample_to_model_input(cb, sample):
         maxvalue = sample.pop(max_habitat_name)
         hab['Max_Larval_Capacity'] = pow(10, maxvalue)
         tags.update({max_habitat_name: maxvalue})
-    for catchment in hfcas :
-        name = '%s.Multiplier' % catchment
-        if name in sample :
-            catchment_mult = sample[name]
-            tags.update(cb.set_param(name, catchment_mult))
+    name = '%s.Multiplier' % hfca
+    if name in sample :
+        catchment_mult = sample[name]
+        tags.update(cb.set_param(name, catchment_mult))
 
     set_larval_habitat(cb, { species : {'LINEAR_SPLINE' : hab}})
 
@@ -137,6 +139,15 @@ def map_sample_to_model_input(cb, sample):
     tags.update(cb.set_param('Run_Number', 0))
 
     return tags
+
+
+###################################################### INTERVENTIONS ##########################################################
+# irs_fn = 'C:\Github\PS_dtk_tools\malaria-mz-magude\data\IRS_input_for_PS.csv'
+
+
+# add_mosquito_release(cb, start_day=0, species=species, number=10, tsteps_btwn=30)
+
+################################################################################################################################
 
 
 cb.update_params({'Demographics_Filenames': ['single_node_no_malaria_demographics.json'],
