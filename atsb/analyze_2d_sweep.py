@@ -48,21 +48,25 @@ class Sweep2DAnalyzer(BaseAnalyzer) :
         d['year'] = d['time'].apply(lambda x : int(x/365))
 
         d = d[d['time'] >= 100]
-        summed = d.groupby(self.sweep_variables + ['run_number'])[self.channel].agg(np.sum).redet_index(drop=True)
-        df = summed.groupby(self.sweep_variables)[self.channel].agg(np.mean)
+        summed = d.groupby(self.sweep_variables + ['Run_Number'])[self.channel].agg(np.sum).reset_index()
+        df = summed.groupby(self.sweep_variables)[self.channel].agg(np.mean).reset_index()
+
         print(df)
-        exit()
 
-
-    def plot(self):
-
+        sns.set_style('white', {'axes.linewidth' : 0.5})
         fig = plt.figure()
+        ax = fig.gca()
+        sns.heatmap(df.pivot(index=self.sweep_variables[0], columns=self.sweep_variables[1], values=self.channel),
+                    ax=ax)
+        ax.set_ylabel(self.sweep_variables[0])
+        ax.set_xlabel(self.sweep_variables[1])
+        plt.show()
         plt.close('all')
 
 
 if __name__ == '__main__' :
 
-    expid = 'c8929faf-4b7a-e811-a2c0-c4346bcb7275'
+    expid = '63903283-1f7b-e811-a2c0-c4346bcb7275'
     am = AnalyzeManager(expid,
                         analyzers=Sweep2DAnalyzer(['coverage', 'initial_killing']))
     am.analyze()

@@ -47,21 +47,23 @@ def atsb_fn(cb, coverage, killing) :
             }
         }
 
-    add_ATSB(cb, start=100, killing_cfg=killing_cfg, duration=365)
+    add_ATSB(cb, start=100, coverage=coverage, duration=365)
     return { 'coverage' : coverage,
              'initial_killing' : killing}
 
 
+add_ATSB(cb, start=100, coverage=1, duration=365)
+
 builder = ModBuilder.from_list( [ [
     ModFn(atsb_fn, cov, kill),
     ModFn(DTKConfigBuilder.set_param, 'Run_Number', x)
-    ] for cov in np.linspace(0,1,11) for kill in np.linspace(0, 1, 11) for x in range(100)
+    ] for cov in np.linspace(0,1,11) for kill in np.linspace(0, 1, 11) for x in range(1)
 ])
 
 
 run_sim_args = {'config_builder': cb,
                 'exp_name': exp_name,
-                'exp_builder': builder
+                # 'exp_builder': builder
                 }
 
 
