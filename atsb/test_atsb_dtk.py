@@ -52,7 +52,7 @@ def atsb_fn(cb, coverage, killing) :
         }
         ]
 
-    add_ATSB(cb, coverage=coverage, start=100, duration=365, kill_cfg=killing_cfg)
+    add_ATSB(cb, coverage=coverage, start=100, duration=365, kill_cfg=killing_cfg[1])
     return { 'coverage' : coverage,
              'initial_killing' : killing}
 
