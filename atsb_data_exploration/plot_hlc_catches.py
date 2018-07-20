@@ -132,12 +132,12 @@ def plot_year_on_year_fold_change_by_site(df) :
     plt.savefig(os.path.join(plotdir, 'HLC_year_on_year_pct_change_by_site.png'))
     plt.show()
 
-if __name__ == '__main__' :
+def plot_int_vs_control() :
 
-    # plot_hlc_by_site()
     df = aggregate_counts(load_df())
     meandf = df.groupby(['arm', 'date', 'Position'])['vector count'].agg(np.mean).reset_index()
 
+    sns.set_style('whitegrid')
     fig = plt.figure()
     ax = plt.gca()
     for pos, pdf in meandf.groupby('Position') :
@@ -153,6 +153,12 @@ if __name__ == '__main__' :
 
     ax.set_xticklabels(['', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
     ax.set_ylabel('2017 percent diff in vector count in int vs control')
+    ax.set_ylim(0,-100)
     ax.legend()
     plt.savefig(os.path.join(plotdir, 'HLC_pct_change_int_vs_control.png'))
     plt.show()
+
+if __name__ == '__main__' :
+
+    # plot_hlc_by_site()
+    plot_int_vs_control()
