@@ -26,9 +26,10 @@ from dtk.vector.species import set_larval_habitat
 from simtools.SetupParser import SetupParser
 from spline_functions import *
 # from .spline_functions import get_spline_values_for_all_params, get_annual_representative_spline, \
-#     get_representative_spline_multipliers
+#     get_representative_spline_multipiers
+from dtk.interventions.novel_vector_control import add_ATSB
 
-from MultiYearEntoCalibSite import MultiYearEntoCalibSite
+from ATSBEntoCalibSite import ATSBEntoCalibSite
 
 # Which simtools.ini block to use for this calibration
 SetupParser.default_block = 'HPC'
@@ -55,14 +56,15 @@ itn_fn = os.path.join(datadir,
 
 
 hfca = 'Kangaba'
-sites = [MultiYearEntoCalibSite(species, hfca=hfca, throwaway=throwaway,
-                                      reference_fname = 'C:/Users/jkurlander/Dropbox (IDM)/Malaria Team Folder/projects/atsb/Reference_data/dataTest.csv'#os.path.join(datadir, 'Malaria Team Folder/projects/Mozambique/entomology_calibration/', reference_fname),
+sites = [ATSBEntoCalibSite(species, hfca=hfca, throwaway=throwaway,
+                                      reference_fname = 'C:/Users/jkurlander/Dropbox (IDM)/Malaria Team Folder/projects/atsb/Reference_data/atsbAppliedData.csv'#os.path.join(datadir, 'Malaria Team Folder/projects/Mozambique/entomology_calibration/', reference_fname),
                                )
         ]
 
 
-expname = '%sEntoCalib%s_TEST' %(hfca, species)
-max_iterations = 6
+Class = "WaningEffectMapPiecewise"
+expname = 'Mali ATSB Daily Sugarfeeding Seasonal'
+max_iterations = 15
 max_diff = 0.5
 max_frac_diff = 0.05
 
@@ -78,79 +80,88 @@ ref = sites[0].analyzers[0].reference.copy()
 duration = 1#int(max(ref.reset_index()['Month'])/12) + 1
 
 params = [
-    {
-        'Name': '%s_max' % (species),
-        'Dynamic': True,
-        'Guess': 9.4,
-        'Min': 6,
-        'Max': 14,
-    },
-    # {
-    #     'Name': 'blah',
-    #     'Dynamic': True,
-    #     'Guess': 1.0,
-    #     'Min': 1.0,
-    #     'Max': 1.0
-    # }
+
+      # {
+      #     'Name': 'KillingProfile',
+      #     'Dynamic': True,
+      #     'Guess': 0.015,
+      #     'Min': 0.0,
+      #     'Max': 0.5,
+      # },
+      # {
+      #      'Name': 'HalfLife',
+      #      'Dynamic': False,
+      #      'Guess': 36500,
+      #      'Min': 1,
+      #      'Max': 36500
+      # },
+      # {
+      #     'Name': 'BoxDuration',
+      #     'Dynamic': False,
+      #     'Guess': 900,
+      #     'Min': 1,
+      #     'Max': 365
+      # }
+      {
+         'Name': 'WetSeason',
+          'Dynamic': True,
+          'Guess': 0.010243,
+          'Min': 0,
+          'Max': 1
+      },
+      {
+          'Name': 'DrySeason',
+          'Dynamic': True,
+          'Guess': 0.04922,
+          'Min': 0,
+          'Max': 1
+      }
+
 ]
 
-
-
-
-
-
-
 spline = get_spline_values(ref, species)
+hardCodedGuesses = [0.001114407,	0.001019929,	0.001121028, 0.011774454, 	0.039971776, 	0.132583995, 	0.967888784, 	2.214546424, 	0.753793083, 0.336686848,	0.051583281, 0.024973167]
+# for i, row in spline.iterrows() :
+#     d = row.to_dict()
+#     d['Name'] = '%s_%i' % (species, row['Month'])
+#     d['Guess'] = hardCodedGuesses[i]
+#     params.append(d)
 
 
-hardCodedGuesses = [0.001000053, 0.001129273, 0.001251811, 0.00105388, 0.001054574, 0.041127467, 0.139085295, 0.233689097, 0.090214862, 0.035443671, 0.004443424, 0.004815332]
-for i, row in spline.iterrows() :
-    d = row.to_dict()
-    d['Name'] = '%s_%i' % (species, row['Month'])
-    d['Guess'] = hardCodedGuesses[i]
-    d['Dynamic'] = False
-    params.append(d)
-
-
-ls_hab_ref = { 'Capacity_Distribution_Number_Of_Years' : throwaway + duration,
-               'Capacity_Distribution_Over_Time' : {
-                   'Times' : [0],
-                   'Values' : [0.01]
-               },
-               'Max_Larval_Capacity' : 3.3e7}
 
 
 def map_sample_to_model_input(cb, sample):
 
-    tags = {}
-    hab = copy.copy(ls_hab_ref)
-    timepoints = sorted([int(x.split('_')[1]) for x in sample.keys() if ('max' not in x and 'Multiplier' not in x)])
-    dates = [365*throwaway + (x-1)*365/12 for x in timepoints] + [365*(duration + throwaway)-1]
-    hab['Capacity_Distribution_Over_Time']['Times'] = [0] + dates
-    hab['Capacity_Distribution_Over_Time']['Values'] = [0.01]*len(hab['Capacity_Distribution_Over_Time']['Times'])
 
-    for mindex, month in enumerate(timepoints) :
-        name = '%s_%i' %(species, month)
-        if name in sample:
-            splinevalue = sample.pop(name)
-            hab['Capacity_Distribution_Over_Time']['Values'][mindex+1] = splinevalue
-            tags.update({name: splinevalue})
+    tags = {}
+
+
 
     # Updating max habitat values
-    max_habitat_name = '%s_max' % species
-    if max_habitat_name in sample:
-        maxvalue = sample.pop(max_habitat_name)
-        hab['Max_Larval_Capacity'] = pow(10, maxvalue)
-        tags.update({max_habitat_name: maxvalue})
-    name = '%s.Multiplier' % hfca
-    if name in sample :
-        catchment_mult = sample[name]
-        tags.update(cb.set_param(name, catchment_mult))
+    #value = sample.pop('KillingProfile')
+    #tags.update({'KillingProfile': value})
+    dry = sample.pop('DrySeason')
+    tags.update({'DrySeason': dry})
+    wet = sample.pop('WetSeason')
+    tags.update({'WetSeason': wet})
+    #time = sample.pop('HalfLife')
+    #tags.update({'HalfLife': time})
+    #box = sample.pop('BoxDuration')
+    #tags.update({'BoxDuration': box})
+    add_ATSB(cb, start = 517, coverage = 1.0, kill_cfg = {'Species': 'funestus',
+                              'Killing_Config': {"class": Class,
+                                                 "Initial_Effect": 1.0,
 
-    set_larval_habitat(cb, { species : {'LINEAR_SPLINE' : hab}})
-
-    # for name,value in sample.items():
-    #     print('UNUSED PARAMETER:'+name)
+                                                  #"Box_Duration": box,
+                                                 #"Decay_Time_Constant": time,
+                                                 "Durability_Map": {
+                                                       "Times": [0, 30, 120],
+                                                       "Values": [dry, wet, dry]
+                                                   }
+                                                 }},
+                duration = 365)
+     #for name,value in sample.items():
+     #    print('UNUSED PARAMETER:'+name)
     # assert( len(sample) == 0 ) # All params used
 
     # For testing only, the duration should be handled by the site !! Please remove before running in prod!
@@ -167,7 +178,6 @@ def map_sample_to_model_input(cb, sample):
 # add_mosquito_release(cb, start_day=0, species=species, number=10, tsteps_btwn=30)
 
 ################################################################################################################################
-
 
 cb.update_params({'Demographics_Filenames': ['single_node_no_malaria_demographics.json'],
 
@@ -199,14 +209,14 @@ cb.update_params({'Demographics_Filenames': ['single_node_no_malaria_demographic
 # Just for fun, let the numerical derivative baseline scale with the number of dimensions
 volume_fraction = 0.01   # desired fraction of N-sphere area to unit cube area for numerical derivative (automatic radius scaling with N)
 num_params = len([p for p in params if p['Dynamic']])
-r = math.exp(1/float(num_params)*(math.log(volume_fraction) + gammaln(num_params/2.+1) - num_params/2.*math.log(math.pi)))
-r *= 0.00000000005
+#r = math.exp(1/float(num_params)*(math.log(volume_fraction) + gammaln(num_params/2.+1) - num_params/2.*math.log(math.pi)))
+r = 0.05
 
 optimtool = OptimTool(params,
     mu_r = r,           # <-- radius for numerical derivatve.  CAREFUL not to go too small with integer parameters
     sigma_r = r/10.,    # <-- stdev of radius
     center_repeats=1, # <-- Number of times to replicate the center (current guess).  Nice to compare intrinsic to extrinsic noise
-    samples_per_iteration=11 # was 32  # 32 # <-- Samples per iteration, includes center repeats.  Actual number of sims run is this number times number of sites.
+    samples_per_iteration=500 # was 32  # 32 # <-- Samples per iteration, includes center repeats.  Actual number of sims run is this number times number of sites.
 )
 
 
