@@ -18,7 +18,7 @@ plotdir = os.path.join(rootdir, 'Malaria Team Folder/projects/atsb/data_explorat
 hlc_fname = os.path.join(datadir, 'HLC_raw_all_dates.csv')
 
 atsb_start = datetime.date(2017, 6, 1)
-intervention_villages = ['Krekelo', 'Sirakele', 'Trekourou', 'Farabale', 'Kignele', 'Tiko', 'Sambadani']
+intervention_villages = ['Krekrelo', 'Sirakele', 'Trekourou', 'Farabale', 'Kignele', 'Tiko', 'Sambadani']
 
 
 def add_date_column() :
@@ -35,6 +35,21 @@ def load_df() :
 
     df = pd.read_csv(hlc_fname)
     df['date'] = pd.to_datetime(df['date'])
+    df['arm'] = 'control'
+    df.loc[df['Study Sites'].isin(intervention_villages), 'arm'] = 'intervention'
+    return df
+
+def aggregate_counts(df, sep_by_position=True) :
+
+    grouplist = ['arm', 'Study Sites', 'date', 'Position']
+    if not sep_by_position :
+        grouplist.pop()
+
+    grouped = df.groupby(grouplist)
+    sdf = grouped['mosquito ID'].agg(len).reset_index()
+    sdf.rename(columns={'mosquito ID': 'vector count'}, inplace=True)
+    df = sdf.sort_values(by=['Study Sites', 'date'])
+
     return df
 
 def plot_hlc_by_site() :
@@ -74,8 +89,76 @@ def plot_hlc_by_site() :
                 ax.set_ylim(ymin, ymax)
     plt.savefig(os.path.join(plotdir, 'HLC_by_site.png'))
     plt.savefig(os.path.join(plotdir, 'HLC_by_site.pdf'), format='PDF')
+
+
+def calculate_change_by_month(df) :
+
+    change_by_sites = {'month' : list(range(6,13))}
+    for site, sdf in df.groupby('Study Sites'):
+        changes = []
+        for month in range(6,13) :
+            old = sdf[sdf['date'] == datetime.date(2016, month, 1)]
+            new = sdf[sdf['date'] == datetime.date(2017, month, 1)]
+            if len(old) == 0 or len(new) == 0 :
+                changes.append(-1)
+                continue
+            fold_change = (np.sum(new['vector count']) - np.sum(old['vector count']))/np.sum(old['vector count'])
+            changes.append(fold_change)
+        change_by_sites[site] = changes
+    return pd.DataFrame(change_by_sites)
+
+def plot_year_on_year_fold_change_by_site(df) :
+
+    df = aggregate_counts(df)
+    fold_changes = calculate_change_by_month(df)
+
+    palette = load_color_palette()
+    fig = plt.figure()
+    ax = fig.gca()
+    for i, village in enumerate(df['Study Sites'].unique()) :
+        if village in intervention_villages :
+            linestyle = '-o'
+            arm = 'int'
+        else :
+            linestyle = '--o'
+            arm = 'con'
+        sdf = fold_changes[fold_changes[village] != -1]
+        ax.plot(sdf['month'], sdf[village]*100, linestyle, color=palette[i], label='%s %s' % (village, arm))
+
+    ax.set_ylabel('year on year pct change in vector count')
+    ax.set_xticklabels(['', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+    ax.legend()
+
+    plt.savefig(os.path.join(plotdir, 'HLC_year_on_year_pct_change_by_site.png'))
+    plt.show()
+
+def plot_int_vs_control() :
+
+    df = aggregate_counts(load_df())
+    meandf = df.groupby(['arm', 'date', 'Position'])['vector count'].agg(np.mean).reset_index()
+
+    sns.set_style('whitegrid')
+    fig = plt.figure()
+    ax = plt.gca()
+    for pos, pdf in meandf.groupby('Position') :
+        data = []
+        for month in range(6, 13):
+            date = datetime.date(2017, month, 1)
+            control = pdf[(pdf['arm'] == 'control') & (pdf['date'] == date)]
+            intervention = pdf[(pdf['arm'] == 'intervention') & (pdf['date'] == date)]
+            c = control['vector count'].values[0]
+            i = intervention['vector count'].values[0]
+            data.append((i - c)/c*100)
+        ax.plot(list(range(6,13)), data, '-o', label=pos)
+
+    ax.set_xticklabels(['', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'])
+    ax.set_ylabel('2017 percent diff in vector count in int vs control')
+    ax.set_ylim(0,-100)
+    ax.legend()
+    plt.savefig(os.path.join(plotdir, 'HLC_pct_change_int_vs_control.png'))
     plt.show()
 
 if __name__ == '__main__' :
 
-    plot_hlc_by_site()
+    # plot_hlc_by_site()
+    plot_int_vs_control()
