@@ -57,10 +57,25 @@ class ATSBEntoCalibSite(EntomologyCalibSite):
 
             return irs_events
 
-        # update_species_param(cb, 'gambiae', 'Indoor_Feeding_Fraction', 0.5)                                                                                                                                                                                                                                            0.001114407,	0.001019929,	0.001121028, 0.011774454, 	0.039971776, 	0.132583995, 	0.967888784, 	2.214546424, 	0.753793083, 0.336686848,	0.051583281, 0.024973167
-        hab = {'Capacity_Distribution_Number_Of_Years': 2, 'Capacity_Distribution_Over_Time': {'Times': [0, 365.0, 395.4166666666667, 425.8333333333333, 456.25, 486.6666666666667, 517.0833333333334, 547.5, 577.9166666666666, 608.3333333333334, 638.75, 669.1666666666667, 699.5833333333333, 729], 'Values': [0.01, 0.001000053, 0.001129273, 0.001251811, 0.00105388, 0.001054574, 0.041127467, 0.139085295, 0.233689097, 0.090214862 , 0.035443671, 0.004443424, 0.004815332, 0.01]}, 'Max_Larval_Capacity': 2.51e9}
+    # To change the population numbers, leave the first and last values in "values".
+        # Replace the middle 12 with the 12-month habitat numbers.
+
+    # Jake's 2018 Mali CDC Habitats 0.001022239,   0.001720589, 0.001294523, 0.032008412, 0.044822194, 0.014206219,
+        # 0.617550763, 3.537562285, 3.907661784, 1.487261934, 0.579478307, 0.068954299
+        # Funestus, anthropophily .8, life expectancy 20, CDC Control larval habitat 7.08  max
+
+    # Jake's 2018 Mali HLC Habitats 0.001, 0.001236706, 0.001933152, 0.056693638, 0.057953358, 0.015, 0.95, 2.159928736,
+        # 3.205076212, 0.43290933, 0.391090655, 0.138816133
+        # Funestus, anthropophily .8, life expectancy 20, HLC Control larval habitat, 7.44 max
+
+        hab = {'Capacity_Distribution_Number_Of_Years': 2, 'Capacity_Distribution_Over_Time': {
+            'Times': [0, 365.0, 395.4166666666667, 425.8333333333333, 456.25, 486.6666666666667, 517.0833333333334,
+                      547.5, 577.9166666666666, 608.3333333333334, 638.75, 669.1666666666667, 699.5833333333333, 729],
+            'Values': [0.01, 0.001, 0.001236706, 0.001933152, 0.056693638, 0.057953358, 0.015, 0.95, 2.159928736,
+                       3.205076212, 0.43290933, 0.391090655, 0.138816133, 0.01]}, 'Max_Larval_Capacity': 2.75e7}
+
         setupFunctions = [species_param_fn('funestus', 'Indoor_Feeding_Fraction', 0.9),
-                        larval_habitat_fn('funestus', {'LINEAR_SPLINE' : hab})]
+                        larval_habitat_fn('gambiae', {'LINEAR_SPLINE' : hab})]
 
         irs, itn = [], []
         if self.irs_fname :

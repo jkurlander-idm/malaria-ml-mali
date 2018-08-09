@@ -39,7 +39,8 @@ cb = DTKConfigBuilder.from_defaults('MALARIA_SIM')
 update_species_param(cb, 'gambiae', 'Indoor_Feeding_Fraction', 0.5)
 update_species_param(cb, 'funestus', 'Indoor_Feeding_Fraction', 0.9)
 update_species_param(cb, 'funestus', 'Vector_Sugar_Feeding_Frequency', 'VECTOR_SUGAR_FEEDING_EVERY_DAY', overwrite=False)
-
+update_species_param(cb, 'funestus', 'Anthropophily', 0.8)
+update_species_param(cb, 'funestus', 'Adult_Life_Expectancy', 20)
 datadir = 'C:\\Users\\jkurlander\\Dropbox (IDM)'
 
 # List of sites we want to calibrate on
@@ -56,13 +57,13 @@ itn_fn = os.path.join(datadir,
 
 hfca = 'Kangaba'
 sites = [MultiYearEntoCalibSite(species, hfca=hfca, throwaway=throwaway,
-                                      reference_fname = 'C:/Users/jkurlander/Dropbox (IDM)/Malaria Team Folder/projects/atsb/Reference_data/dataTest.csv'#os.path.join(datadir, 'Malaria Team Folder/projects/Mozambique/entomology_calibration/', reference_fname),
+                                      reference_fname = 'C:/Users/jkurlander/Dropbox (IDM)/Malaria Team Folder/projects/atsb/Reference_data/CDCControl.csv'#os.path.join(datadir, 'Malaria Team Folder/projects/Mozambique/entomology_calibration/', reference_fname),
                                )
         ]
 
 
-expname = '%sEntoCalib%s_TEST' %(hfca, species)
-max_iterations = 6
+expname = '%sEntoCalib%s_TEST' %(hfca, species) + 'Fixed'
+max_iterations = 12
 max_diff = 0.5
 max_frac_diff = 0.05
 
@@ -81,7 +82,7 @@ params = [
     {
         'Name': '%s_max' % (species),
         'Dynamic': True,
-        'Guess': 9.4,
+        'Guess': 7.44,
         'Min': 6,
         'Max': 14,
     },
@@ -103,12 +104,19 @@ params = [
 spline = get_spline_values(ref, species)
 
 
-hardCodedGuesses = [0.001000053, 0.001129273, 0.001251811, 0.00105388, 0.001054574, 0.041127467, 0.139085295, 0.233689097, 0.090214862, 0.035443671, 0.004443424, 0.004815332]
-for i, row in spline.iterrows() :
+
+
+#0.001,         0.001236706, 0.001933152, 0.056693638, 0.057953358, 0.015,          0.95,        2.159928736, 3.205076212, 0.43290933,  0.391090655, 0.138816133 -- Funestus, anthropophily .8, life expectancy 20, HLC Control larval habitat, 7.44 funestus_max
+#0.001022239,   0.001720589, 0.001294523, 0.032008412, 0.044822194, 0.014206219,    0.617550763, 3.537562285, 3.907661784, 1.487261934, 0.579478307, 0.068954299 Funestus, anthropophily .8, life expectancy 20, CDC Control larval habitat 7.08 funestus max
+
+
+
+hardCodedGuesses = [0.001,         0.001236706, 0.001933152, 0.056693638, 0.057953358, 0.015,          0.95,        2.159928736, 3.205076212, 0.43290933,  0.391090655, 0.138816133]
+for i, row in spline.iterrows():
     d = row.to_dict()
     d['Name'] = '%s_%i' % (species, row['Month'])
     d['Guess'] = hardCodedGuesses[i]
-    d['Dynamic'] = False
+    d['Dynamic'] = True
     params.append(d)
 
 
@@ -176,10 +184,10 @@ cb.update_params({'Demographics_Filenames': ['single_node_no_malaria_demographic
                       "Birth_Rate_Dependence": "FIXED_BIRTH_RATE",
                       "Climate_Model": 'CLIMATE_BY_DATA',
 
-                      "Air_Temperature_Filename": 'Mozambique_Magude_30arcsec_air_temperature_daily.bin',
-                      "Land_Temperature_Filename": 'Mozambique_Magude_30arcsec_air_temperature_daily.bin',
-                      "Rainfall_Filename": 'Mozambique_Magude_30arcsec_rainfall_daily.bin',
-                      "Relative_Humidity_Filename": 'Mozambique_Magude_30arcsec_relative_humidity_daily.bin',
+                      "Air_Temperature_Filename": 'Burkina Faso_30arcsec_air_temperature_daily.bin',
+                      "Land_Temperature_Filename": 'Burkina Faso_30arcsec_air_temperature_daily.bin',
+                      "Rainfall_Filename": 'Burkina Faso_30arcsec_rainfall_daily.bin',
+                      "Relative_Humidity_Filename": 'Burkina Faso_30arcsec_relative_humidity_daily.bin',
 
                       "Death_Rate_Dependence": "NONDISEASE_MORTALITY_BY_AGE_AND_GENDER",
                       "Disable_IP_Whitelist": 1,
@@ -200,13 +208,13 @@ cb.update_params({'Demographics_Filenames': ['single_node_no_malaria_demographic
 volume_fraction = 0.01   # desired fraction of N-sphere area to unit cube area for numerical derivative (automatic radius scaling with N)
 num_params = len([p for p in params if p['Dynamic']])
 r = math.exp(1/float(num_params)*(math.log(volume_fraction) + gammaln(num_params/2.+1) - num_params/2.*math.log(math.pi)))
-r *= 0.00000000005
+r *= 0.005
 
 optimtool = OptimTool(params,
     mu_r = r,           # <-- radius for numerical derivatve.  CAREFUL not to go too small with integer parameters
     sigma_r = r/10.,    # <-- stdev of radius
     center_repeats=1, # <-- Number of times to replicate the center (current guess).  Nice to compare intrinsic to extrinsic noise
-    samples_per_iteration=11 # was 32  # 32 # <-- Samples per iteration, includes center repeats.  Actual number of sims run is this number times number of sites.
+    samples_per_iteration=3 # was 32  # 32 # <-- Samples per iteration, includes center repeats.  Actual number of sims run is this number times number of sites.
 )
 
 

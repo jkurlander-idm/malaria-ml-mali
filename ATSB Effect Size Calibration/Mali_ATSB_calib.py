@@ -39,14 +39,15 @@ SetupParser.default_block = 'HPC'
 cb = DTKConfigBuilder.from_defaults('MALARIA_SIM')
 update_species_param(cb, 'gambiae', 'Indoor_Feeding_Fraction', 0.5)
 update_species_param(cb, 'funestus', 'Indoor_Feeding_Fraction', 0.9)
-update_species_param(cb, 'funestus', 'Vector_Sugar_Feeding_Frequency', 'VECTOR_SUGAR_FEEDING_EVERY_DAY', overwrite=False)
+update_species_param(cb, 'gambiae', 'Vector_Sugar_Feeding_Frequency', 'VECTOR_SUGAR_FEEDING_EVERY_DAY', overwrite=False)
+update_species_param(cb, 'gambiae', 'Anthropophily', 0.8)
+update_species_param(cb, 'gambiae', 'Adult_Life_Expectancy', 20)
 
 datadir = 'C:\\Users\\jkurlander\\Dropbox (IDM)'
 
 # List of sites we want to calibrate on
 throwaway = 1
-species  = 'funestus'
-# reference_fname = 'combined_funestus_count.csv'
+species  = 'gambiae'
 reference_fname = 'cluster_mosquito_counts_per_house_by_month.csv'
 reference_spline = 'Multi_year_calibration_by_HFCA_180404/best_180409/Panjane_funestus.csv'
 irs_fn = os.path.join(datadir,
@@ -54,17 +55,15 @@ irs_fn = os.path.join(datadir,
 itn_fn = os.path.join(datadir,
                       'Malaria Team Folder/projects/Mozambique/entomology_calibration/cluster_all_itn_events.csv')
 
-
+referenceData = 'C:/Users/jkurlander/Dropbox (IDM)/Malaria Team Folder/projects/atsb/Reference_data/HLCIntervention.csv'
 hfca = 'Kangaba'
 sites = [ATSBEntoCalibSite(species, hfca=hfca, throwaway=throwaway,
-                                      reference_fname = 'C:/Users/jkurlander/Dropbox (IDM)/Malaria Team Folder/projects/atsb/Reference_data/atsbAppliedData.csv'#os.path.join(datadir, 'Malaria Team Folder/projects/Mozambique/entomology_calibration/', reference_fname),
-                               )
-        ]
+                          reference_fname = referenceData)]
 
-
-Class = "WaningEffectMapPiecewise"
-expname = 'Mali ATSB Daily Sugarfeeding Seasonal'
-max_iterations = 15
+# WaningEffectMapPiecewise (Seasonal), WaningEffectConstant, WaningEffectExponential, WaningEffectBoxExponential
+Class = "WaningEffectConstant"
+expname = 'Mali ATSB Calibration ' + str(Class) + ' HLC'
+max_iterations = 5
 max_diff = 0.5
 max_frac_diff = 0.05
 
@@ -81,103 +80,96 @@ duration = 1#int(max(ref.reset_index()['Month'])/12) + 1
 
 params = [
 
-      # {
-      #     'Name': 'KillingProfile',
-      #     'Dynamic': True,
-      #     'Guess': 0.015,
-      #     'Min': 0.0,
-      #     'Max': 0.5,
-      # },
-      # {
-      #      'Name': 'HalfLife',
-      #      'Dynamic': False,
-      #      'Guess': 36500,
-      #      'Min': 1,
-      #      'Max': 36500
-      # },
-      # {
-      #     'Name': 'BoxDuration',
-      #     'Dynamic': False,
-      #     'Guess': 900,
-      #     'Min': 1,
-      #     'Max': 365
-      # }
       {
-         'Name': 'WetSeason',
-          'Dynamic': True,
-          'Guess': 0.010243,
-          'Min': 0,
-          'Max': 1
+            #% of mosquitoes killed per day
+           'Name': 'KillingProfile',
+           'Dynamic': True,
+           'Guess': 0.0337,
+           'Min': 0.0,
+           'Max': 0.5,
       },
       {
+            # Only for exponential / box exponential
+            'Name': 'HalfLife',
+            'Dynamic': False,
+            'Guess': 213,
+            'Min': 1,
+            'Max': 36500
+      },
+      {
+            # Only for box / box exponential
+           'Name': 'BoxDuration',
+           'Dynamic': False,
+           'Guess': 900,
+           'Min': 1,
+           'Max': 365
+      },
+      {
+          # Map Piecewise data point (Currently set up with 2, but could be made with more
+          'Name': 'WetSeason',
+          'Dynamic': False,
+          'Guess': 0.05,
+          'Min': 0.0,
+          'Max': 0.5
+      },
+      {
+          # Map piecewise data point 2
           'Name': 'DrySeason',
-          'Dynamic': True,
-          'Guess': 0.04922,
-          'Min': 0,
+          'Dynamic': False,
+          'Guess': 0.11,
+          'Min': 0.0,
           'Max': 1
+      },
+        # Map piecewise time variable
+      {
+          'Name': 'WetSeasonDuration',
+          'Dynamic': False,
+          'Guess': 100,
+          'Min': 60,
+          'Max': 120
       }
-
 ]
 
 spline = get_spline_values(ref, species)
-hardCodedGuesses = [0.001114407,	0.001019929,	0.001121028, 0.011774454, 	0.039971776, 	0.132583995, 	0.967888784, 	2.214546424, 	0.753793083, 0.336686848,	0.051583281, 0.024973167]
-# for i, row in spline.iterrows() :
-#     d = row.to_dict()
-#     d['Name'] = '%s_%i' % (species, row['Month'])
-#     d['Guess'] = hardCodedGuesses[i]
-#     params.append(d)
-
-
-
 
 def map_sample_to_model_input(cb, sample):
 
-
     tags = {}
-
-
-
-    # Updating max habitat values
-    #value = sample.pop('KillingProfile')
-    #tags.update({'KillingProfile': value})
+    # Updating values
+    killRate = sample.pop('KillingProfile')
+    tags.update({'KillingProfile': killRate})
     dry = sample.pop('DrySeason')
     tags.update({'DrySeason': dry})
     wet = sample.pop('WetSeason')
     tags.update({'WetSeason': wet})
-    #time = sample.pop('HalfLife')
-    #tags.update({'HalfLife': time})
-    #box = sample.pop('BoxDuration')
-    #tags.update({'BoxDuration': box})
-    add_ATSB(cb, start = 517, coverage = 1.0, kill_cfg = {'Species': 'funestus',
-                              'Killing_Config': {"class": Class,
-                                                 "Initial_Effect": 1.0,
-
-                                                  #"Box_Duration": box,
-                                                 #"Decay_Time_Constant": time,
-                                                 "Durability_Map": {
-                                                       "Times": [0, 30, 120],
-                                                       "Values": [dry, wet, dry]
-                                                   }
-                                                 }},
-                duration = 365)
-     #for name,value in sample.items():
-     #    print('UNUSED PARAMETER:'+name)
-    # assert( len(sample) == 0 ) # All params used
+    wetStart = sample.pop('WetSeasonStartDate')
+    tags.update({'WetSeasonStartDate': wetStart})
+    wetDur = sample.pop('WetSeasonDuration')
+    tags.update({'WetSeasonDuration': wetDur})
+    time = sample.pop('HalfLife')
+    tags.update({'HalfLife': time})
+    box = sample.pop('BoxDuration')
+    tags.update({'BoxDuration': box})
+    add_ATSB(cb, start = 517, coverage = 1.0, kill_cfg = {'Species': species,
+                                'Killing_Config': {"class": Class,
+                                                   # This intial effect is the killing rate, but if you're running a
+                                                   # seasonal/piecewise model, the durability map values are multiplied
+                                                   # by this, so set it to 1.0 instead of the killRate value.
+                                                   "Initial_Effect": killRate,
+                                                   #"Initial_Effect": 1.0
+                                                    "Box_Duration": box,
+                                                   "Decay_Time_Constant": time,
+                                                   "Durability_Map": {
+                                                        "Times": [0, wetDur],
+                                                        "Values": [wet, dry]
+                                                    }
+                                }},
+                  duration = 365)
 
     # For testing only, the duration should be handled by the site !! Please remove before running in prod!
     tags.update(cb.set_param("Simulation_Duration", (throwaway+duration)*365))
     tags.update(cb.set_param('Run_Number', 0))
-
     return tags
-
-
-###################################################### INTERVENTIONS ##########################################################
-# irs_fn = 'C:\Github\PS_dtk_tools\malaria-mz-magude\data\IRS_input_for_PS.csv'
-
-
-# add_mosquito_release(cb, start_day=0, species=species, number=10, tsteps_btwn=30)
-
-################################################################################################################################
 
 cb.update_params({'Demographics_Filenames': ['single_node_no_malaria_demographics.json'],
 
@@ -186,10 +178,10 @@ cb.update_params({'Demographics_Filenames': ['single_node_no_malaria_demographic
                       "Birth_Rate_Dependence": "FIXED_BIRTH_RATE",
                       "Climate_Model": 'CLIMATE_BY_DATA',
 
-                      "Air_Temperature_Filename": 'Mozambique_Magude_30arcsec_air_temperature_daily.bin',
-                      "Land_Temperature_Filename": 'Mozambique_Magude_30arcsec_air_temperature_daily.bin',
-                      "Rainfall_Filename": 'Mozambique_Magude_30arcsec_rainfall_daily.bin',
-                      "Relative_Humidity_Filename": 'Mozambique_Magude_30arcsec_relative_humidity_daily.bin',
+                      "Air_Temperature_Filename": 'Burkina Faso_30arcsec_air_temperature_daily.bin',
+                      "Land_Temperature_Filename": 'Burkina Faso_30arcsec_air_temperature_daily.bin',
+                      "Rainfall_Filename": 'Burkina Faso_30arcsec_rainfall_daily.bin',
+                      "Relative_Humidity_Filename": 'Burkina Faso_30arcsec_relative_humidity_daily.bin',
 
                       "Death_Rate_Dependence": "NONDISEASE_MORTALITY_BY_AGE_AND_GENDER",
                       "Disable_IP_Whitelist": 1,
@@ -209,14 +201,18 @@ cb.update_params({'Demographics_Filenames': ['single_node_no_malaria_demographic
 # Just for fun, let the numerical derivative baseline scale with the number of dimensions
 volume_fraction = 0.01   # desired fraction of N-sphere area to unit cube area for numerical derivative (automatic radius scaling with N)
 num_params = len([p for p in params if p['Dynamic']])
-#r = math.exp(1/float(num_params)*(math.log(volume_fraction) + gammaln(num_params/2.+1) - num_params/2.*math.log(math.pi)))
-r = 0.05
+
+#Change radius
+r = math.exp(1/float(num_params)*(math.log(volume_fraction) + gammaln(num_params/2.+1) - num_params/2.*math.log(math.pi)))
+#r = 0.5
+#r *= 0.5
+
 
 optimtool = OptimTool(params,
     mu_r = r,           # <-- radius for numerical derivatve.  CAREFUL not to go too small with integer parameters
     sigma_r = r/10.,    # <-- stdev of radius
     center_repeats=1, # <-- Number of times to replicate the center (current guess).  Nice to compare intrinsic to extrinsic noise
-    samples_per_iteration=500 # was 32  # 32 # <-- Samples per iteration, includes center repeats.  Actual number of sims run is this number times number of sites.
+    samples_per_iteration=1000 # was 32  # <-- Samples per iteration, includes center repeats.  Actual number of sims run is this number times number of sites.
 )
 
 
